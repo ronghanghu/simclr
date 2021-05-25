@@ -30,6 +30,7 @@ import tensorflow.compat.v2 as tf
 import tensorflow_datasets as tfds
 
 
+logging.set_verbosity(logging.INFO)
 
 FLAGS = flags.FLAGS
 
@@ -397,9 +398,10 @@ def perform_evaluation(model, builder, eval_steps, ckpt, strategy, topology):
   # Write summaries
   cur_step = global_step.numpy()
   logging.info('Writing summaries for %d step', cur_step)
-  with summary_writer.as_default():
-    metrics.log_and_write_metrics_to_summary(all_metrics, cur_step)
-    summary_writer.flush()
+  with tf.device("/cpu"):
+    with summary_writer.as_default():
+      metrics.log_and_write_metrics_to_summary(all_metrics, cur_step)
+      summary_writer.flush()
 
   # Record results as JSON.
   result_json_path = os.path.join(FLAGS.model_dir, 'result.json')
@@ -640,17 +642,18 @@ def main(argv):
       while cur_step < train_steps:
         # Calls to tf.summary.xyz lookup the summary writer resource which is
         # set by the summary writer's context manager.
-        with summary_writer.as_default():
-          train_multiple_steps(iterator)
-          cur_step = global_step.numpy()
-          checkpoint_manager.save(cur_step)
-          logging.info('Completed: %d / %d steps', cur_step, train_steps)
-          metrics.log_and_write_metrics_to_summary(all_metrics, cur_step)
-          tf.summary.scalar(
-              'learning_rate',
-              learning_rate(tf.cast(global_step, dtype=tf.float32)),
-              global_step)
-          summary_writer.flush()
+        train_multiple_steps(iterator)
+        cur_step = global_step.numpy()
+        checkpoint_manager.save(cur_step)
+        logging.info('Completed: %d / %d steps', cur_step, train_steps)
+        with tf.device("/cpu"):
+          with summary_writer.as_default():
+            metrics.log_and_write_metrics_to_summary(all_metrics, cur_step)
+            tf.summary.scalar(
+                'learning_rate',
+                learning_rate(tf.cast(global_step, dtype=tf.float32)),
+                global_step)
+            summary_writer.flush()
         for metric in all_metrics:
           metric.reset_states()
       logging.info('Training complete...')

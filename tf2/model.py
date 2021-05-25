@@ -128,23 +128,22 @@ class LinearLayer(tf.keras.layers.Layer):
     # However, it is still used for batch norm.
     super(LinearLayer, self).__init__(**kwargs)
     self.num_classes = num_classes
+    self.use_bias = use_bias
     self.use_bn = use_bn
     self._name = name
-    if callable(self.num_classes):
-      num_classes = -1
-    else:
-      num_classes = self.num_classes
-    self.dense = tf.keras.layers.Dense(
-        num_classes,
-        kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
-        use_bias=use_bias and not self.use_bn)
     if self.use_bn:
       self.bn_relu = resnet.BatchNormRelu(relu=False, center=use_bias)
 
   def build(self, input_shape):
     # TODO(srbs): Add a new SquareDense layer.
     if callable(self.num_classes):
-      self.dense.units = self.num_classes(input_shape)
+      num_classes = self.num_classes(input_shape)
+    else:
+      num_classes = self.num_classes
+    self.dense = tf.keras.layers.Dense(
+        num_classes,
+        kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
+        use_bias=self.use_bias and not self.use_bn)
     super(LinearLayer, self).build(input_shape)
 
   def call(self, inputs, training):
