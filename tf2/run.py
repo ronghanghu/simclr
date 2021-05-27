@@ -238,6 +238,14 @@ flags.DEFINE_boolean(
     'use_blur', True,
     'Whether or not to use Gaussian blur for augmentation during pretraining.')
 
+flags.DEFINE_bool(
+    'use_vit', False,
+    'Whether to use ViT model instead of ResNet')
+
+flags.DEFINE_string(
+    'vit_model_type', 'vit_b16_224',
+    'ViT model architecture')
+
 
 def get_salient_tensors_dict():
   """Returns a dictionary of tensors."""
